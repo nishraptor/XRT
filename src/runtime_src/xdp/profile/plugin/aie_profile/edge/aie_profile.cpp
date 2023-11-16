@@ -262,25 +262,6 @@ namespace xdp {
       }
   }
 
-  bool AieProfile_EdgeImpl::isInputSet(const module_type type, const std::string metricSet)
-  {
-    // Catch memory tile sets
-    if (type == module_type::mem_tile) {
-      if ((metricSet.find("input") != std::string::npos)
-          || (metricSet.find("s2mm") != std::string::npos))
-        return true;
-      else
-        return false;
-    }
-
-    // Remaining covers interface tiles
-    if ((metricSet.find("input") != std::string::npos)
-        || (metricSet.find("mm2s") != std::string::npos))
-      return true;
-    else
-      return false;
-  }
-
   bool AieProfile_EdgeImpl::isStreamSwitchPortEvent(const XAie_Events event)
   {
     // AIE tiles
@@ -344,7 +325,7 @@ namespace xdp {
   }
 
   void 
-  AieProfile_EdgeImpl::configGroupEvents(XAie_DevInst* aieDevInst, const XAie_LocType loc,
+  AieProfile_EdgeImpl::configGroupEvents(const XAie_LocType loc,
                                          const XAie_ModuleType mod, const module_type type,
                                          const std::string metricSet, const XAie_Events event,
                                          const uint8_t channel)
@@ -362,7 +343,7 @@ namespace xdp {
     else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
       XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
     else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL) {
-      uint32_t bitMask = isInputSet(type, metricSet) 
+      uint32_t bitMask = aie::isInputSet(type, metricSet) 
           ? ((channel == 0) ? GROUP_SHIM_S2MM0_STALL_MASK : GROUP_SHIM_S2MM1_STALL_MASK)
           : ((channel == 0) ? GROUP_SHIM_MM2S0_STALL_MASK : GROUP_SHIM_MM2S1_STALL_MASK);
       XAie_EventGroupControl(aieDevInst, loc, mod, event, bitMask);
@@ -372,7 +353,7 @@ namespace xdp {
   // Configure stream switch ports for monitoring purposes
   // NOTE: Used to monitor streams: trace, interfaces, and memory tiles
   void
-  AieProfile_EdgeImpl::configStreamSwitchPorts(XAie_DevInst* aieDevInst, const tile_type& tile,
+  AieProfile_EdgeImpl::configStreamSwitchPorts(const tile_type& tile,
                                                xaiefal::XAieTile& xaieTile, const XAie_LocType loc,
                                                const module_type type, const uint32_t numCounters,
                                                const std::string metricSet, const uint8_t channel0, 
@@ -420,7 +401,7 @@ namespace xdp {
           }
           else {
             uint8_t channel = (portnum == 0) ? channel0 : channel1;
-            auto slaveOrMaster = isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
+            auto slaveOrMaster = aie::isInputSet(type, metricSet) ? XAIE_STRMSW_MASTER : XAIE_STRMSW_SLAVE;
             switchPortRsc->setPortToSelect(slaveOrMaster, DMA, channel);
           }
         }
@@ -450,8 +431,7 @@ namespace xdp {
   }
 
   void 
-  AieProfile_EdgeImpl::configEventSelections(XAie_DevInst* aieDevInst,
-                                             const XAie_LocType loc,
+  AieProfile_EdgeImpl::configEventSelections(const XAie_LocType loc,
                                              const XAie_ModuleType mod,
                                              const module_type type,
                                              const std::string metricSet,
@@ -461,15 +441,14 @@ namespace xdp {
     if (type != module_type::mem_tile)
       return;
 
-    XAie_DmaDirection dmaDir = isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
+    XAie_DmaDirection dmaDir = aie::isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
     XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
     XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
   }
 
   // Get reportable payload specific for this tile and/or counter
   uint32_t 
-  AieProfile_EdgeImpl::getCounterPayload(XAie_DevInst* aieDevInst, 
-                                         const tile_type& tile, 
+  AieProfile_EdgeImpl::getCounterPayload(const tile_type& tile, 
                                          const module_type type, 
                                          uint16_t column, 
                                          uint16_t row, 
@@ -486,7 +465,7 @@ namespace xdp {
     // 2. Channel IDs for memory tiles
     if (type == module_type::mem_tile) {
       // NOTE: value = ((master or slave) << 8) & (channel ID)
-      uint8_t isMaster = isInputSet(type, metricSet) ? 1 : 0;
+      uint8_t isMaster = aie::isInputSet(type, metricSet) ? 1 : 0;
       return ((isMaster << 8) | channel);
     }
 
@@ -575,29 +554,6 @@ namespace xdp {
     return (absRow - rowOffset);
   }
 
-  module_type 
-  AieProfile_EdgeImpl::getModuleType(uint16_t absRow, XAie_ModuleType mod)
-  {
-    if (absRow == 0)
-      return module_type::shim;
-    if (absRow < metadata->getAIETileRowOffset())
-      return module_type::mem_tile;
-    return ((mod == XAIE_CORE_MOD) ? module_type::core : module_type::dma);
-  }
-
-  bool AieProfile_EdgeImpl::isValidType(module_type type, XAie_ModuleType mod)
-  {
-    if ((mod == XAIE_CORE_MOD) && ((type == module_type::core) 
-        || (type == module_type::dma)))
-      return true;
-    if ((mod == XAIE_MEM_MOD) && ((type == module_type::dma) 
-        || (type == module_type::mem_tile)))
-      return true;
-    if ((mod == XAIE_PL_MOD) && (type == module_type::shim)) 
-      return true;
-    return false;
-  }
-
   void AieProfile_EdgeImpl::modifyEvents(module_type type, uint16_t subtype, uint8_t channel,
                                          std::vector<XAie_Events>& events)
   {
@@ -663,8 +619,8 @@ namespace xdp {
         auto col         = tile.col;
         auto row         = tile.row;
         auto subtype     = tile.subtype;
-        auto type        = getModuleType(row, mod);
-        if (!isValidType(type, mod))
+        auto type        = aie::getModuleType(row, mod);
+        if (!aie::isValidType(type, mod))
           continue;
 
         auto& metricSet  = tileMetric.second;
@@ -817,7 +773,7 @@ namespace xdp {
       if ((aie->column != prevColumn) || (aie->row != prevRow)) {
         prevColumn = aie->column;
         prevRow = aie->row;
-        auto moduleType = getModuleType(aie->row, XAIE_CORE_MOD);
+        auto moduleType = getModuleType(aie->row, metadata->getAIETileRowOffset(), XAIE_CORE_MOD);
         auto falModuleType =  (moduleType == module_type::core) ? XAIE_CORE_MOD 
                             : ((moduleType == module_type::shim) ? XAIE_PL_MOD 
                             : XAIE_MEM_MOD);

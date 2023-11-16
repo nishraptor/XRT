@@ -220,9 +220,9 @@ namespace xdp {
         auto tile = tileMetric.first;
         auto row  = tile.row;
         auto col  = tile.col;
-        auto type = getModuleType(row, mod);
+        auto type = aie::getModuleType(row, metadata->getAIETileRowOffset(), mod);
 
-        if (!isValidType(type, mod))
+        if (!aie::isValidType(type, mod))
           continue;
 
         auto& metricSet  = tileMetric.second;
@@ -359,8 +359,7 @@ namespace xdp {
 
   void
   AieProfile_WinImpl::
-  configGroupEvents(
-    const XAie_LocType loc, const XAie_ModuleType mod,
+  configGroupEvents(const XAie_LocType loc, const XAie_ModuleType mod,
     const XAie_Events event, const std::string& metricSet, uint8_t channel)
   {
     // Set masks for group events
@@ -449,32 +448,6 @@ namespace xdp {
     std::stringstream msg;
     msg << "Configured mem tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << "DMA  for metricset " << metricSet << " and channel " << (int)channel0 << ".";
     xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-  }
-
-  module_type 
-  AieProfile_WinImpl::
-  getModuleType(uint16_t absRow, XAie_ModuleType mod)
-  {
-    if (absRow == 0)
-      return module_type::shim;
-    if (absRow < metadata->getAIETileRowOffset())
-      return module_type::mem_tile;
-    return ((mod == XAIE_CORE_MOD) ? module_type::core : module_type::dma);
-  }
-
-  bool
-  AieProfile_WinImpl::
-  isValidType(module_type type, XAie_ModuleType mod)
-  {
-    if ((mod == XAIE_CORE_MOD) && ((type == module_type::core) 
-        || (type == module_type::dma)))
-      return true;
-    if ((mod == XAIE_MEM_MOD) && ((type == module_type::dma) 
-        || (type == module_type::mem_tile)))
-      return true;
-    if ((mod == XAIE_PL_MOD) && (type == module_type::shim)) 
-      return true;
-    return false;
   }
 
   void

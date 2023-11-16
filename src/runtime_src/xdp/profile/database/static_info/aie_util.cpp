@@ -46,6 +46,47 @@ void throwIfError(bool err, const char* msg)
     throw std::runtime_error(msg);
 }
 
+bool isInputSet(const module_type type, const std::string metricSet)
+  {
+    // Catch memory tile sets
+    if (type == module_type::mem_tile) {
+      if ((metricSet.find("input") != std::string::npos)
+          || (metricSet.find("s2mm") != std::string::npos))
+        return true;
+      else
+        return false;
+    }
+
+    // Remaining covers interface tiles
+    if ((metricSet.find("input") != std::string::npos)
+        || (metricSet.find("mm2s") != std::string::npos))
+      return true;
+    else
+      return false;
+  }
+
+bool isValidType(module_type type, XAie_ModuleType mod)
+{
+  if ((mod == XAIE_CORE_MOD) && ((type == module_type::core) 
+      || (type == module_type::dma)))
+    return true;
+  if ((mod == XAIE_MEM_MOD) && ((type == module_type::dma) 
+      || (type == module_type::mem_tile)))
+    return true;
+  if ((mod == XAIE_PL_MOD) && (type == module_type::shim)) 
+    return true;
+  return false;
+}
+
+module_type getModuleType(uint16_t absRow, uint16_t rowOffset, XAie_ModuleType mod)
+{
+  if (absRow == 0)
+    return module_type::shim;
+  if (absRow < rowOffset)
+    return module_type::mem_tile;
+  return ((mod == XAIE_CORE_MOD) ? module_type::core : module_type::dma);
+}
+
 std::unique_ptr<xdp::aie::BaseFiletypeImpl>
 determineFileType(boost::property_tree::ptree& aie_project)
 {

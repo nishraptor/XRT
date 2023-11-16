@@ -40,8 +40,6 @@ namespace xdp {
     void poll(uint32_t index, void* handle);
     void freeResources();
     bool setMetricsSettings(uint64_t deviceId);
-    xdp::module_type getModuleType(uint16_t absRow, XAie_ModuleType mod);
-    bool isValidType(module_type type, XAie_ModuleType mod);
     bool isStreamSwitchPortEvent(const XAie_Events event);
     void configEventSelections(
       const XAie_LocType loc, const xdp::module_type type,

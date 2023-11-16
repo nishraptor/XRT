@@ -36,6 +36,18 @@ namespace xdp::aie {
   void 
   throwIfError(bool err, const char* msg);
 
+  XDP_EXPORT
+  bool 
+  isInputSet(const module_type type, const std::string metricSet);
+
+  XDP_EXPORT
+  bool 
+  isValidType(module_type type, XAie_ModuleType mod);
+
+  XDP_EXPORT
+  module_type 
+  getModuleType(uint16_t absRow, uint16_t rowOffset, XAie_ModuleType mod);
+
   // A function to read the JSON from an axlf section inside the xclbin and
   // return the type of the file
   XDP_EXPORT
@@ -66,6 +78,8 @@ namespace xdp::aie {
   std::vector<std::string>
   getValidGraphs(const boost::property_tree::ptree& aie_meta,
                 const std::string& root);
+
+        
 
 } // namespace xdp::aie
 
