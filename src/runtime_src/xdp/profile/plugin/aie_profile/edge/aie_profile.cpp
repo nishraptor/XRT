@@ -262,24 +262,6 @@ namespace xdp {
       }
   }
 
-  bool AieProfile_EdgeImpl::isStreamSwitchPortEvent(const XAie_Events event)
-  {
-    // AIE tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) 
-        && (event < XAIE_EVENT_GROUP_BROADCAST_CORE))
-      return true;
-    // Interface tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_PL) 
-        && (event < XAIE_EVENT_GROUP_BROADCAST_A_PL))
-      return true;
-    // Memory tiles
-    if ((event > XAIE_EVENT_GROUP_STREAM_SWITCH_MEM_TILE) 
-        && (event < XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM_TILE))
-      return true;
-
-    return false;
-  }
-
   bool AieProfile_EdgeImpl::isPortRunningEvent(const XAie_Events event)
   {
     std::set<XAie_Events> runningEvents = {
@@ -321,32 +303,6 @@ namespace xdp {
       return 1;
     default:
       return 0;
-    }
-  }
-
-  void 
-  AieProfile_EdgeImpl::configGroupEvents(const XAie_LocType loc,
-                                         const XAie_ModuleType mod, const module_type type,
-                                         const std::string metricSet, const XAie_Events event,
-                                         const uint8_t channel)
-  {
-    // Set masks for group events
-    // NOTE: Group error enable register is blocked, so ignoring
-    if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_DMA_MASK);
-    else if (event == XAIE_EVENT_GROUP_LOCK_MEM)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
-    else if (event == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
-    else if (event == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
-    else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
-    else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL) {
-      uint32_t bitMask = aie::isInputSet(type, metricSet) 
-          ? ((channel == 0) ? GROUP_SHIM_S2MM0_STALL_MASK : GROUP_SHIM_S2MM1_STALL_MASK)
-          : ((channel == 0) ? GROUP_SHIM_MM2S0_STALL_MASK : GROUP_SHIM_MM2S1_STALL_MASK);
-      XAie_EventGroupControl(aieDevInst, loc, mod, event, bitMask);
     }
   }
 
@@ -428,22 +384,6 @@ namespace xdp {
     }
 
     switchPortMap.clear();
-  }
-
-  void 
-  AieProfile_EdgeImpl::configEventSelections(const XAie_LocType loc,
-                                             const XAie_ModuleType mod,
-                                             const module_type type,
-                                             const std::string metricSet,
-                                             const uint8_t channel0,
-                                             const uint8_t channel1) 
-  {
-    if (type != module_type::mem_tile)
-      return;
-
-    XAie_DmaDirection dmaDir = aie::isInputSet(type, metricSet) ? DMA_S2MM : DMA_MM2S;
-    XAie_EventSelectDmaChannel(aieDevInst, loc, 0, dmaDir, channel0);
-    XAie_EventSelectDmaChannel(aieDevInst, loc, 1, dmaDir, channel1);
   }
 
   // Get reportable payload specific for this tile and/or counter

@@ -210,6 +210,8 @@ namespace xdp {
     XAie_StartTransaction(&aieDevInst, XAIE_TRANSACTION_DISABLE_AUTO_FLUSH);
 
     auto configChannel0 = metadata->getConfigChannel0();
+    auto configChannel1 = metadata->getConfigChannel1();
+
     for (int module = 0; module < metadata->getNumModules(); ++module) {
 
       XAie_ModuleType mod = falModuleTypes[module];
@@ -240,7 +242,10 @@ namespace xdp {
 
         auto iter0 = configChannel0.find(tile);
         uint8_t channel0 = (iter0 == configChannel0.end()) ? 0 : iter0->second;
-        configEventSelections(loc, type, metricSet, channel0);
+
+        auto iter1 = configChannel1.find(tile);
+        uint8_t channel1 = (iter1 == configChannel1.end()) ? 0 : iter1->second;
+        configEventSelections(loc, type, metricSet, channel1);
 
         // Request and configure all available counters for this tile
         for (uint8_t i = 0; i < numFreeCtr; i++) {
@@ -350,44 +355,6 @@ namespace xdp {
     return runtimeCounters;
   }
 
-  bool
-  AieProfile_WinImpl::
-  isStreamSwitchPortEvent(const XAie_Events event)
-  {
-    return (std::find(mSSEventList.begin(), mSSEventList.end(), event) != mSSEventList.end());
-  }
-
-  void
-  AieProfile_WinImpl::
-  configGroupEvents(const XAie_LocType loc, const XAie_ModuleType mod,
-    const XAie_Events event, const std::string& metricSet, uint8_t channel)
-  {
-    // Set masks for group events
-    // NOTE: Group error enable register is blocked, so ignoring
-    if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
-      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_DMA_MASK);
-    else if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_PL)
-      // Pass channel and set correct mask 
-      if (metricSet.find("input") != std::string::npos  || metricSet.find("s2mm") != std::string::npos)
-        if (channel == 0)
-          XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_SHIM_S2MM0_STALL_MASK);
-        else 
-          XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_SHIM_S2MM1_STALL_MASK);
-      else 
-        if (channel == 2)
-          XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_SHIM_MM2S0_STALL_MASK);
-        else 
-          XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_SHIM_MM2S1_STALL_MASK);
-    else if (event == XAIE_EVENT_GROUP_LOCK_MEM)
-      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
-    else if (event == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
-      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
-    else if (event == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE)
-      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
-    else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE)
-      XAie_EventGroupControl(&aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
-  }
-
   // Configure stream switch ports for monitoring purposes
   // NOTE: Used to monitor streams: trace, interfaces, and MEM tiles
   void
@@ -431,23 +398,6 @@ namespace xdp {
       msg << "Configured mem tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << " stream switch ports for metricset " << metricSet << " and channel " << (int)channel << ".";
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
-  }
-
-  void
-  AieProfile_WinImpl::
-  configEventSelections(
-    const XAie_LocType loc, const module_type type,
-    const std::string metricSet, const uint8_t channel0) 
-  {
-    if (type != module_type::mem_tile)
-      return;
-
-    XAie_DmaDirection dmaDir = (metricSet.find("s2mm") != std::string::npos) ? DMA_S2MM : DMA_MM2S;
-    XAie_EventSelectDmaChannel(&aieDevInst, loc, 0, dmaDir, channel0);
-
-    std::stringstream msg;
-    msg << "Configured mem tile " << ((metricSet.find("s2mm") != std::string::npos) ? "S2MM" : "MM2S") << "DMA  for metricset " << metricSet << " and channel " << (int)channel0 << ".";
-    xrt_core::message::send(severity_level::debug, "XRT", msg.str());
   }
 
   void

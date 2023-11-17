@@ -40,16 +40,7 @@ namespace xdp {
     void poll(uint32_t index, void* handle);
     void freeResources();
     bool setMetricsSettings(uint64_t deviceId);
-    bool isStreamSwitchPortEvent(const XAie_Events event);
-    void configEventSelections(
-      const XAie_LocType loc, const xdp::module_type type,
-      const std::string metricSet, const uint8_t channel0
-    );
-    void configGroupEvents(
-      const XAie_LocType loc, const XAie_ModuleType mod,
-      const XAie_Events event, const std::string& metricSet, 
-      uint8_t channel
-    );
+
     uint32_t getCounterPayload(const tile_type& tile, 
       const xdp::module_type type, uint16_t column, 
       uint16_t row, XAie_Events startEvent, 
@@ -73,15 +64,6 @@ namespace xdp {
         {module_type::dma,      BASE_MEMORY_COUNTER},
         {module_type::shim,     BASE_SHIM_COUNTER},
         {module_type::mem_tile, BASE_MEM_TILE_COUNTER}
-      };
-
-      std::vector<XAie_Events> mSSEventList = {
-        XAIE_EVENT_PORT_RUNNING_0_CORE,
-        XAIE_EVENT_PORT_STALLED_0_CORE,
-        XAIE_EVENT_PORT_RUNNING_0_PL,
-        XAIE_EVENT_PORT_RUNNING_0_MEM_TILE,
-        XAIE_EVENT_PORT_STALLED_0_MEM_TILE,
-        XAIE_EVENT_PORT_TLAST_0_MEM_TILE
       };
 
       std::map<module_type, std::vector<uint64_t>> regValues {
