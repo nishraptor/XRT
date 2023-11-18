@@ -35,6 +35,8 @@
 #include "op_buf.hpp"
 #include "op_init.hpp"
 
+#include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
+
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
@@ -222,9 +224,9 @@ namespace xdp {
         auto tile = tileMetric.first;
         auto row  = tile.row;
         auto col  = tile.col;
-        auto type = aie::getModuleType(row, metadata->getAIETileRowOffset(), mod);
+        auto type = xdp::aie_profile::getModuleType(row, metadata->getAIETileRowOffset(), mod);
 
-        if (!aie::isValidType(type, mod))
+        if (!xdp::aie_profile::isValidType(type, mod))
           continue;
 
         auto& metricSet  = tileMetric.second;
@@ -245,7 +247,7 @@ namespace xdp {
 
         auto iter1 = configChannel1.find(tile);
         uint8_t channel1 = (iter1 == configChannel1.end()) ? 0 : iter1->second;
-        configEventSelections(loc, type, metricSet, channel1);
+        xdp::aie_profile::configEventSelections(loc, type, metricSet, channel0, channel1);
 
         // Request and configure all available counters for this tile
         for (uint8_t i = 0; i < numFreeCtr; i++) {
@@ -267,8 +269,8 @@ namespace xdp {
           RC = XAie_PerfCounterControlSet(&aieDevInst, loc, mod, i, startEvent, endEvent);
           if(RC != XAIE_OK) break;
 
-          configGroupEvents(loc, mod, startEvent, metricSet, channel0);
-          if (isStreamSwitchPortEvent(startEvent))
+          xdp::aie_profile::configGroupEvents(loc, mod, startEvent, metricSet, channel0);
+          if (xdp::aie_profile::isStreamSwitchPortEvent(startEvent))
             configStreamSwitchPorts(tileMetric.first, loc, type, metricSet, channel0);
 
           // Convert enums to physical event IDs for reporting purposes

@@ -16,6 +16,7 @@
 
 #define XDP_SOURCE 
 
+#include "xdp/profile/plugin/aie_profile/util/aie_profile_util.h"
 #include "xdp/profile/plugin/aie_profile/edge/aie_profile.h"
 #include "xdp/profile/database/static_info/aie_util.h"
 
@@ -559,8 +560,8 @@ namespace xdp {
         auto col         = tile.col;
         auto row         = tile.row;
         auto subtype     = tile.subtype;
-        auto type        = aie::getModuleType(row, mod);
-        if (!aie::isValidType(type, mod))
+        auto type        = xdp::aie_profile::getModuleType(row, mod);
+        if (!xdp::aie_profile::isValidType(type, mod))
           continue;
 
         auto& metricSet  = tileMetric.second;
@@ -593,7 +594,7 @@ namespace xdp {
         modifyEvents(type, subtype, channel0, startEvents);
         endEvents = startEvents;
 
-        configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, metricSet, channel0, channel1);
+        xdp::aie_profile::configEventSelections(aieDevInst, loc, XAIE_MEM_MOD, type, metricSet, channel0, channel1);
         configStreamSwitchPorts(aieDevInst, tileMetric.first, xaieTile, loc, type, numFreeCtr, 
                                 metricSet, channel0, channel1, startEvents, endEvents);
 
