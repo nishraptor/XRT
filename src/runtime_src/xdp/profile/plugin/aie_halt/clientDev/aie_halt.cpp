@@ -65,6 +65,8 @@ namespace xdp {
     if (!txnHandler->initializeKernel("XDP_KERNEL"))
       return;
 
+    bool x2 = xrt_core::config::get_aie_halt_settings_x2();
+
     boost::property_tree::ptree aieMetadata;
     try {
       auto device = xrt_core::hw_context_int::get_core_device(mHwContext);
@@ -133,7 +135,16 @@ namespace xdp {
     for (uint8_t c = static_cast<uint8_t>(startCol) ; c < (static_cast<uint8_t>(startCol + numCols)) ; c++ ) {
       for (uint8_t r = 2; r < 6 ; r++) {
         auto tileOffset = XAie_GetTileAddr(&aieDevInst, r, c);
+        if (x2) {
+          std::stringstream msg;
+          msg << " Set AIE Core breakpoint Using Debug Halts" << std::endl;
+          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str()); 
+          XAie_CoreDebugHalt(&aieDevInst, XAie_TileLoc(c, r));
+        } else {
+         
+        
         XAie_Write32(&aieDevInst, tileOffset + XAIEMLGBL_CORE_MODULE_DEBUG_CONTROL1, dbg_ctrl_1_reg);
+      }
         //XAie_CoreDebugHalt(&aieDevInst, XAie_TileLoc(c, r));
       }
     }

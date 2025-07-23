@@ -297,6 +297,13 @@ get_aie_halt_settings_control_code()
   return value;
 }
 
+inline std::string
+get_aie_halt_settings_x2()
+{
+  static bool value = detail::get_bool_value("AIE_halt_settings.x2", false);
+  return value;
+}
+
 inline bool
 get_profile_api()
 {
